@@ -1,0 +1,54 @@
+# ==============================================================================
+# Foundation Service - Configuração de Produção
+# ==============================================================================
+
+# Database Configuration (Production)
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      connection-timeout: 30000
+  
+  # JPA Configuration (Production)
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        generate_statistics: false
+
+# Server Configuration (Production)
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+  error:
+    include-stacktrace: never
+    include-exception: false
+
+# Actuator Configuration (Production)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+# Logging Configuration (Production)
+logging:
+  level:
+    root: WARN
+    com.akstack.foundation: INFO
+    org.springframework.web: WARN
+    org.springframework.data: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    liquibase: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
