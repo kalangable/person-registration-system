@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-01" author="akstack">
+        <comment>FASE 1: Criar tabela party (entidade base do Party Model)</comment>
+        
+        <createTable tableName="party">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="party_number" type="VARCHAR(20)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="party_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="true" unique="true"/>
+            </column>
+            <column name="phone" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_deleted" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_party_number" tableName="party">
+            <column name="party_number"/>
+        </createIndex>
+
+        <createIndex indexName="idx_party_type" tableName="party">
+            <column name="party_type"/>
+        </createIndex>
+
+        <createIndex indexName="idx_party_email" tableName="party">
+            <column name="email"/>
+        </createIndex>
+
+        <createIndex indexName="idx_party_is_deleted" tableName="party">
+            <column name="is_deleted"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE party ADD CONSTRAINT chk_party_type 
+            CHECK (party_type IN ('PERSON', 'ORGANIZATION'))
+        </sql>
+    </changeSet>
+
+    <changeSet id="001-02" author="akstack">
+        <comment>FASE 1: Criar tabela person (pessoa física)</comment>
+        
+        <createTable tableName="person">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" 
+                             foreignKeyName="fk_person_party" 
+                             references="party(id)"/>
+            </column>
+            <column name="first_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="middle_name" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(300)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_of_birth" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="gender" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="primary_identification_type" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="primary_identification_document" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_person_full_name" tableName="person">
+            <column name="full_name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_person_first_name" tableName="person">
+            <column name="first_name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_person_last_name" tableName="person">
+            <column name="last_name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_person_identification" tableName="person">
+            <column name="primary_identification_type"/>
+            <column name="primary_identification_document"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE person ADD CONSTRAINT chk_person_gender 
+            CHECK (gender IN ('MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'))
+        </sql>
+
+        <sql>
+            ALTER TABLE person ADD CONSTRAINT chk_person_identification_type 
+            CHECK (primary_identification_type IN ('CPF', 'SSN', 'PASSPORT', 'NATIONAL_ID', 'OTHER'))
+        </sql>
+    </changeSet>
+
+    <changeSet id="001-03" author="akstack">
+        <comment>FASE 1: Criar tabela organization (pessoa jurídica)</comment>
+        
+        <createTable tableName="organization">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" 
+                             foreignKeyName="fk_organization_party" 
+                             references="party(id)"/>
+            </column>
+            <column name="legal_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trade_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="brand_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="founding_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="primary_identification_type" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="primary_identification_document" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_organization_legal_name" tableName="organization">
+            <column name="legal_name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_organization_trade_name" tableName="organization">
+            <column name="trade_name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_organization_identification" tableName="organization">
+            <column name="primary_identification_type"/>
+            <column name="primary_identification_document"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE organization ADD CONSTRAINT chk_organization_identification_type 
+            CHECK (primary_identification_type IN ('CNPJ', 'EIN', 'VAT', 'COMPANY_NUMBER', 'OTHER'))
+        </sql>
+    </changeSet>
+
+    <changeSet id="001-04" author="akstack">
+        <comment>FASE 1: Criar sequence para party_number</comment>
+        
+        <createSequence
+                sequenceName="party_number_seq"
+                startValue="1000000"
+                incrementBy="1"
+                minValue="1000000"
+                maxValue="99999999"
+                cycle="false"/>
+    </changeSet>
+
+</databaseChangeLog>

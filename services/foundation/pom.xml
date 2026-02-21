@@ -168,14 +168,10 @@
                 <artifactId>liquibase-maven-plugin</artifactId>
                 <configuration>
                     <propertyFile>src/main/resources/liquibase.properties</propertyFile>
-                    <propertyFileWillOverride>false</propertyFileWillOverride>
+                    <propertyFileWillOverride>true</propertyFileWillOverride>
                     <changeLogFile>src/main/resources/db/changelog/db.changelog-master.xml</changeLogFile>
-                    <url>${env.LIQUIBASE_URL}</url>
-                    <username>${env.LIQUIBASE_USERNAME}</username>
-                    <password>${env.LIQUIBASE_PASSWORD}</password>
                     <driver>org.postgresql.Driver</driver>
                     <verbose>false</verbose>
-                    <logging>info</logging>
                 </configuration>
                 <dependencies>
                     <dependency>
