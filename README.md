@@ -21,28 +21,31 @@ Funcionalidades Principais:
 
 ## Evolução da Arquitetura (5 Fases)
 
-### FASE 1: MVP Monolítico ✅ (Atual)
+### FASE 1: MVP Monolítico 🔄 (Em Desenvolvimento)
 **Objetivo**: Construir API REST fundacional com arquitetura limpa
 
-**Stack**:
-- Java 21 + Spring Boot 3.2.2
-- PostgreSQL + Flyway migrations
-- Docker Compose para desenvolvimento local
-- JUnit 5 + TestContainers
+**Stack Atual**:
+- Java 21 + Spring Boot 4.0.2
+- PostgreSQL 16 + Liquibase migrations
+- Podman/Docker para desenvolvimento local
+- JUnit 5 + Mockito + TestContainers
 
-**Funcionalidades**:
-- Party Model de 3 tabelas (party, person, organization)
-- Operações CRUD com validação
-- Um documento de identificação primário por party
-- JPA/Hibernate com padrão repository
-- 80% de cobertura de testes (unit + integration + API)
+**Implementado**:
+- ✅ Party Model de 3 tabelas (party, person, organization) com BIGINT IDs
+- ✅ Migrations Liquibase executadas com sucesso
+- ✅ Banco PostgreSQL rodando em container
+- ✅ Sequence para party_number (inicia em 1.000.000)
+- ✅ Soft delete com campo `is_deleted` + `deleted_at`
+- ✅ Auditoria com timestamps (created_at, updated_at)
+- ✅ Check constraints para validação de tipos
+- ✅ Índices otimizados para busca
 
-**Entregas**:
-- ✅ Modelo de domínio (entidades + repositories)
+**Pendente**:
+- ⏳ Entidades JPA (Party, Person, Organization)
+- ⏳ Repositories Spring Data JPA
 - ⏳ Camada de serviço com padrão strategy de validação
 - ⏳ API REST com DTOs e tratamento de exceções
-- ⏳ Migrações de banco com Flyway
-- ⏳ Setup Docker Compose
+- ⏳ Docker Compose multi-serviço
 - ⏳ Suíte de testes abrangente (70% unit, 20% integration, 10% API)
 
 ---
@@ -119,10 +122,10 @@ Funcionalidades Principais:
 
 ### Core
 - **Linguagem**: Java 21
-- **Framework**: Spring Boot 3.2.2
+- **Framework**: Spring Boot 4.0.2
 - **Ferramenta de Build**: Maven (multi-módulo)
 - **Banco de Dados**: PostgreSQL 16
-- **Migração**: Flyway
+- **Migração**: Liquibase 5.0.1
 
 ### Ecossistema Spring
 - Spring Data JPA
@@ -138,7 +141,7 @@ Funcionalidades Principais:
 - MockMvc (testes de API)
 
 ### DevOps
-- Docker + Docker Compose
+- Podman/Docker + Docker Compose
 - Minikube (Kubernetes local)
 - Git + GitHub
 
@@ -149,29 +152,45 @@ Funcionalidades Principais:
 ```
 person-registration-system/
 ├── services/
-│   └── party-service/              # FASE 1: Serviço monolítico
+│   └── foundation/                 # FASE 1: Serviço monolítico
 │       ├── src/main/java/
-│       │   └── com/study/party/
-│       │       ├── domain/         # Entidades de domínio & repositories
-│       │       ├── application/    # Camada de serviço & lógica de negócio
-│       │       └── infrastructure/ # Controllers REST, DTOs, config
+│       │   └── com/akstack/foundation/
+│       │       ├── config/         # Spring configurations
+│       │       ├── domain/
+│       │       │   ├── model/      # JPA entities
+│       │       │   └── repository/ # Spring Data repositories
+│       │       ├── mapper/         # MapStruct mappers
+│       │       ├── service/
+│       │       │   ├── exception/  # Business exceptions
+│       │       │   ├── validation/ # Validators (Strategy Pattern)
+│       │       │   └── [Services]  # Business logic
+│       │       ├── web/
+│       │       │   ├── controller/ # REST controllers
+│       │       │   ├── dto/        # Request/Response DTOs
+│       │       │   └── exception/  # GlobalExceptionHandler
+│       │       └── FoundationApplication.java
 │       ├── src/main/resources/
-│       │   ├── db/migration/       # Scripts SQL do Flyway
+│       │   ├── db/changelog/       # Migrations Liquibase
+│       │   │   ├── db.changelog-master.xml
+│       │   │   └── changes/
+│       │   │       └── 001-create-party-model.xml
 │       │   ├── application.yml
-│       │   └── application-dev.yml
+│       │   ├── application-dev.yml
+│       │   ├── application-prod.yml
+│       │   └── liquibase.properties
 │       └── src/test/
 │           ├── java/.../unit/      # Testes unitários (70%)
 │           ├── java/.../integration/  # Testes de integração (20%)
 │           └── java/.../api/       # Testes de API (10%)
-├── database/
-│   ├── schema-phase1.sql           # ATUAL: 3 tabelas (party, person, org)
-│   └── schema-phase2.sql           # FUTURO: +tabela party_identification
 ├── infrastructure/
-│   ├── docker/                     # Arquivos Docker Compose
-│   └── kubernetes/                 # Manifestos K8s + scripts de setup
+│   ├── docker/                     # Arquivos Docker/Podman
+│   │   ├── seed-data.sql           # Dados fake para testes
+│   │   └── PODMAN_POSTGRES.md      # Instruções Podman
+│   └── kubernetes/                 # Manifestos K8s (FASE 5)
 ├── docs/
-│   ├── IDENTIFICATION_STRATEGY.md  # Decisão arquitetural: posicionamento de documentos
-│   └── ...
+│   └── IDENTIFICATION_STRATEGY.md  # ADR sobre documentos de identificação
+├── pom.xml                         # POM pai Maven
+├── AGENTS.md                       # Guia para agentes de código
 ├── REQUIREMENTS.md                 # Requisitos técnicos detalhados
 └── README.md                       # Este arquivo
 ```
@@ -183,7 +202,7 @@ person-registration-system/
 ### Pré-requisitos
 - Java 21+
 - Maven 3.8+
-- Docker Desktop
+- Podman ou Docker Desktop
 - Git
 
 ### Desenvolvimento Local
@@ -194,32 +213,49 @@ git clone https://github.com/seuusuario/person-registration-system.git
 cd person-registration-system
 ```
 
-2. **Inicie o PostgreSQL com Docker Compose**:
+2. **Inicie o PostgreSQL com Podman**:
 ```bash
-cd infrastructure/docker
-docker-compose up -d postgres
+podman run -d \
+  --name akstack-foundation-postgres \
+  -e POSTGRES_DB=akstack_foundation \
+  -e POSTGRES_USER=akstack \
+  -e POSTGRES_PASSWORD=akstack123 \
+  -p 5432:5432 \
+  -v akstack-foundation-data:/var/lib/postgresql/data \
+  postgres:16-alpine
 ```
 
-3. **Compile o projeto**:
+3. **Execute as migrations do Liquibase**:
 ```bash
-cd services/party-service
+cd services/foundation
+mvn clean process-resources liquibase:update
+```
+
+4. **Compile o projeto**:
+```bash
 mvn clean install
 ```
 
-4. **Execute a aplicação**:
+5. **Execute a aplicação**:
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-5. **Acesse a API**:
+6. **Acesse a API**:
 - API: http://localhost:8080/api/v1
-- Swagger UI: http://localhost:8080/swagger-ui.html
+- Swagger UI: http://localhost:8080/swagger-ui.html (quando implementado)
 - Actuator: http://localhost:8080/actuator/health
+
+### Popular com Dados Fake
+
+```bash
+podman exec -i akstack-foundation-postgres psql -U akstack -d akstack_foundation < infrastructure/docker/seed-data.sql
+```
 
 ### Executando os Testes
 
 ```bash
-# Todos os testes (unit + integration + API)
+# Todos os testes (quando implementados)
 mvn test
 
 # Com relatório de cobertura
@@ -235,10 +271,24 @@ mvn clean test jacoco:report
 ### 1. Padrão Party Model
 **Por quê**: Padrão da indústria (SAP, Oracle, Salesforce) para gerenciamento unificado de pessoa/organização.
 
-**Estrutura**:
-- `party`: Entidade base com campos comuns (party_number, status, country)
-- `person`: Pessoa física com nomes estruturados + identificação
-- `organization`: Pessoa jurídica com razão social/nome fantasia/marca + identificação
+**Estrutura Implementada**:
+- `party`: Entidade base com campos comuns
+  - `id` (BIGINT auto-increment) - Chave primária interna
+  - `party_number` (VARCHAR, unique) - Identificador de negócio (gerado via sequence)
+  - `party_type` (VARCHAR) - PERSON ou ORGANIZATION
+  - `email`, `phone` - Contatos
+  - `is_active`, `is_deleted` - Status e soft delete
+  - `created_at`, `updated_at`, `deleted_at` - Auditoria
+- `person`: Pessoa física
+  - `first_name`, `middle_name`, `last_name` - Nomes estruturados
+  - `full_name` - Nome completo (precisa ser calculado via entidade JPA)
+  - `date_of_birth`, `gender` - Dados pessoais
+  - `primary_identification_type`, `primary_identification_document` - Documentos
+- `organization`: Pessoa jurídica
+  - `legal_name` - Razão social (obrigatório)
+  - `trade_name`, `brand_name` - Nome fantasia e marca (opcionais)
+  - `founding_date` - Data de fundação
+  - `primary_identification_type`, `primary_identification_document` - Documentos
 
 Veja [IDENTIFICATION_STRATEGY.md](docs/IDENTIFICATION_STRATEGY.md) para a justificativa detalhada.
 
@@ -283,21 +333,26 @@ Sem campos específicos do Brasil na estrutura de tabelas. Suporta qualquer paí
 ## Status Atual
 
 **Progresso FASE 1**:
-- ✅ Estrutura do projeto e configuração Maven
-- ✅ Modelo de domínio (entidades Party, Person, Organization)
-- ✅ Camada de repository (consultas JPQL)
-- ⏳ Camada de serviço (em progresso)
+- ✅ Estrutura do projeto Maven multi-módulo
+- ✅ Configuração Spring Boot 4.0.2 com dependências
+- ✅ Schema de banco de dados (Liquibase migrations)
+- ✅ PostgreSQL rodando em container Podman
+- ✅ Migrations executadas com sucesso (4 ChangeSets)
+- ✅ Script de seed data com dados fake (6 pessoas + 7 organizações)
+- ⏳ Modelo de domínio (entidades Party, Person, Organization)
+- ⏳ Camada de repository (consultas JPQL)
+- ⏳ Camada de serviço com validadores
 - ⏳ Controllers REST API e DTOs
-- ⏳ Migrações Flyway
-- ⏳ Setup Docker Compose
+- ⏳ Docker Compose multi-serviço
 - ⏳ Suíte de testes
 
 **Próximos Passos**:
-1. Implementar camada de serviço com padrão strategy de validação
-2. Criar API REST com DTOs e tratamento de exceções
-3. Configurar migrações Flyway a partir do schema-phase1.sql
-4. Construir suíte de testes abrangente
-5. Configurar Docker Compose para desenvolvimento local
+1. Criar entidades JPA mapeando as tabelas existentes
+2. Implementar repositories Spring Data JPA
+3. Implementar camada de serviço com padrão strategy de validação
+4. Criar API REST com DTOs e tratamento de exceções
+5. Construir suíte de testes abrangente
+6. Criar Docker Compose para ambiente completo
 
 ---
 

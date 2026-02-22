@@ -10,6 +10,8 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 - Implementar padrão Party Model da indústria (padrão SAP/Oracle/Salesforce)
 - Suportar cadastro de pessoa/organização genérico e internacional
 
+**Status Atual**: Schema do banco implementado com Liquibase. Camadas de aplicação (entidades JPA, services, controllers) pendentes.
+
 ---
 
 ## Índice
@@ -35,9 +37,9 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 
 **Critérios de Aceitação**:
 - Criar, ler, atualizar e excluir parties
-- Cada party tem um `party_number` único (auto-gerado, formato: `PTY-{UUID}`)
+- Cada party tem um `party_number` único (auto-gerado via sequence, formato numérico sequencial iniciando em 1000000)
 - Parties podem ser pessoas (PF) ou organizações (PJ)
-- Suportar exclusão lógica (soft delete com timestamp `deleted_at`)
+- Suportar exclusão lógica (soft delete com flag `is_deleted` e timestamp `deleted_at`)
 - Rastrear timestamps de criação e modificação automaticamente
 
 ---
@@ -52,11 +54,12 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 - Pessoa deve ter `first_name` (obrigatório)
 - Pessoa pode ter `middle_name` (opcional)
 - Pessoa deve ter `last_name` (obrigatório)
-- Sistema auto-gera `full_name` a partir das partes do nome (via fórmula de banco)
-- Pessoa deve ter um documento de identificação primário (CPF, SSN, Passaporte, etc.)
-- Pessoa deve especificar `primary_identification_type`
-- Pessoa pode ter `date_of_birth` (opcional, mas recomendado)
-- Buscar por: nome (match parcial), documento de identificação, país
+- Sistema deve gerar `full_name` a partir das partes do nome (implementado na aplicação)
+- Pessoa pode ter um documento de identificação primário (CPF, SSN, Passaporte, etc.) - opcional
+- Pessoa deve especificar `primary_identification_type` se fornecer documento
+- Pessoa pode ter `date_of_birth` (opcional)
+- Pessoa pode ter `gender` (opcional, valores: MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY)
+- Buscar por: nome (match parcial), documento de identificação
 
 ---
 
@@ -70,10 +73,10 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 - Organização deve ter `legal_name` (obrigatório, razão social registrada oficialmente)
 - Organização pode ter `trade_name` (opcional, nome fantasia)
 - Organização pode ter `brand_name` (opcional, nome de marca/marketing)
-- Organização deve ter um documento de identificação primário (CNPJ, EIN, VAT, etc.)
-- Organização deve especificar `primary_identification_type`
-- Organização pode ter `founded_date` (opcional)
-- Buscar por: nome (qualquer um: razão social/nome fantasia/marca), documento de identificação, país
+- Organização pode ter um documento de identificação primário (CNPJ, EIN, VAT, etc.) - opcional
+- Organização deve especificar `primary_identification_type` se fornecer documento
+- Organização pode ter `founding_date` (opcional, renomeado de `founded_date`)
+- Buscar por: nome (qualquer um: razão social/nome fantasia/marca), documento de identificação
 
 ---
 
@@ -88,12 +91,11 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 - Buscar por documento de identificação (match exato)
 - Buscar por email (match exato, case-insensitive)
 - Buscar por tipo de party (PERSON ou ORGANIZATION)
-- Buscar por país (match exato, ISO 3166-1 alpha-3)
 - Buscar por nome (match parcial, case-insensitive):
   - Para pessoas: buscar em full_name
   - Para organizações: buscar em legal_name, trade_name ou brand_name
-- Filtrar por status (ACTIVE, INACTIVE, SUSPENDED)
-- Excluir registros com soft-delete das buscas padrão
+- Filtrar por status ativo/inativo (is_active)
+- Excluir registros com soft-delete das buscas padrão (is_deleted = false)
 - Suportar paginação (tamanho da página, número da página, ordenação)
 
 ---
@@ -124,18 +126,13 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 
 **Como** usuário do sistema  
 **Eu quero** gerenciar o status do ciclo de vida do party  
-**Para que** eu possa controlar estados ativo/inativo/suspenso
+**Para que** eu possa controlar estados ativo/inativo
 
 **Critérios de Aceitação**:
-- Três status: `ACTIVE`, `INACTIVE`, `SUSPENDED`
-- Status padrão na criação: `ACTIVE`
-- Transições de status:
-  - ACTIVE → INACTIVE (usuário desativa)
-  - ACTIVE → SUSPENDED (suspensão do sistema/compliance)
-  - INACTIVE → ACTIVE (usuário reativa)
-  - SUSPENDED → ACTIVE (liberação do sistema/compliance)
+- Status booleano: `is_active` (true = ativo, false = inativo)
+- Status padrão na criação: `ACTIVE` (true)
 - Soft delete é independente do status:
-  - Parties deletados são excluídos das buscas independente do status
+  - Parties deletados têm `is_deleted = true` e `deleted_at` preenchido
   - Status pode ser atualizado mesmo em parties deletados (para propósitos de auditoria)
 
 ---
@@ -164,21 +161,20 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 │       PARTY         │
 │  (Entidade Base)    │
 ├─────────────────────┤
-│ id (UUID, PK)       │
+│ id (BIGINT, PK)     │
 │ party_number (UQ)   │
 │ party_type (ENUM)   │
-│ status (ENUM)       │
-│ country (CHAR 3)    │
 │ email               │
 │ phone               │
-│ notes               │
+│ is_active           │
+│ is_deleted          │
 │ created_at          │
 │ updated_at          │
 │ deleted_at          │
 └─────────────────────┘
            △
            │
-           │ (Herança: Joined)
+           │ (FK: id references party.id)
            │
     ┌──────┴──────┐
     │             │
@@ -189,8 +185,9 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 │ first_name   │  │
 │ middle_name  │  │
 │ last_name    │  │
-│ full_name    │  │ (computado)
+│ full_name    │  │
 │ date_of_birth│  │
+│ gender       │  │
 │ primary_     │  │
 │   identification_│
 │   document   │  │
@@ -206,7 +203,7 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
          │ legal_name       │
          │ trade_name       │
          │ brand_name       │
-         │ founded_date     │
+         │ founding_date    │
          │ primary_         │
          │   identification_│
          │   document       │
@@ -214,28 +211,40 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
          │   identification_│
          │   type           │
          └──────────────────┘
+
+SEQUENCE:
+  party_number_seq
+  - START: 1000000
+  - INCREMENT: 1
+  - MAX: 99999999
 ```
 
 ### Tabela: `party`
 
 | Coluna        | Tipo         | Constraints                  | Descrição                            |
 |---------------|--------------|------------------------------|--------------------------------------|
-| id            | UUID         | PRIMARY KEY                  | Identificador único                  |
-| party_number  | VARCHAR(50)  | UNIQUE, NOT NULL             | Chave de negócio (PTY-{UUID})        |
+| id            | BIGINT       | PRIMARY KEY, AUTO_INCREMENT  | Identificador único interno          |
+| party_number  | VARCHAR(20)  | UNIQUE, NOT NULL             | Chave de negócio (numérico, inicia em 1000000) |
 | party_type    | VARCHAR(20)  | NOT NULL                     | PERSON ou ORGANIZATION               |
-| status        | VARCHAR(20)  | NOT NULL, DEFAULT 'ACTIVE'   | ACTIVE, INACTIVE, SUSPENDED          |
-| country       | CHAR(3)      | NOT NULL                     | ISO 3166-1 alpha-3 (ex: BRA, USA)    |
-| email         | VARCHAR(255) | NULL, INDEX                  | Email de contato                     |
+| email         | VARCHAR(255) | NULL, UNIQUE, INDEX          | Email de contato                     |
 | phone         | VARCHAR(20)  | NULL                         | Telefone de contato                  |
-| notes         | TEXT         | NULL                         | Notas adicionais                     |
+| is_active     | BOOLEAN      | NOT NULL, DEFAULT true       | Status ativo/inativo                 |
+| is_deleted    | BOOLEAN      | NOT NULL, DEFAULT false      | Flag de soft delete                  |
 | created_at    | TIMESTAMP    | NOT NULL, DEFAULT now()      | Timestamp de criação (UTC)           |
 | updated_at    | TIMESTAMP    | NOT NULL, DEFAULT now()      | Timestamp da última atualização (UTC)|
-| deleted_at    | TIMESTAMP    | NULL, INDEX                  | Timestamp de soft delete             |
+| deleted_at    | TIMESTAMP    | NULL                         | Timestamp de soft delete             |
 
 **Índices**:
 - `idx_party_number` em `party_number` (único)
+- `idx_party_type` em `party_type` (para filtro)
 - `idx_party_email` em `email` (para busca)
-- `idx_party_deleted_at` em `deleted_at` (para filtrar registros ativos)
+- `idx_party_is_deleted` em `is_deleted` (para filtrar registros ativos)
+
+**Check Constraints**:
+- `chk_party_type`: `party_type IN ('PERSON', 'ORGANIZATION')`
+
+**Sequence**:
+- `party_number_seq`: Inicia em 1000000, incremento de 1, range até 99999999
 
 ---
 
@@ -243,24 +252,28 @@ Este documento define os requisitos técnicos completos para a **FASE 1** do Sis
 
 | Coluna                          | Tipo         | Constraints                | Descrição                      |
 |---------------------------------|--------------|----------------------------|--------------------------------|
-| id                              | UUID         | PRIMARY KEY, FOREIGN KEY   | Referencia party(id)           |
+| id                              | BIGINT       | PRIMARY KEY, FOREIGN KEY   | Referencia party(id)           |
 | first_name                      | VARCHAR(100) | NOT NULL                   | Primeiro nome                  |
 | middle_name                     | VARCHAR(100) | NULL                       | Nome(s) do meio                |
 | last_name                       | VARCHAR(100) | NOT NULL                   | Sobrenome                      |
-| full_name                       | VARCHAR(302) | GENERATED, INDEX           | Nome completo auto-computado   |
+| full_name                       | VARCHAR(300) | NOT NULL, INDEX            | Nome completo (calculado na app)|
 | date_of_birth                   | DATE         | NULL                       | Data de nascimento             |
+| gender                          | VARCHAR(20)  | NULL                       | MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY |
 | primary_identification_document | VARCHAR(50)  | NULL, INDEX                | Documento de ID principal (apenas dígitos) |
-| primary_identification_type     | VARCHAR(20)  | NULL                       | CPF, SSN, PASSPORT, etc.       |
+| primary_identification_type     | VARCHAR(20)  | NULL                       | CPF, SSN, PASSPORT, NATIONAL_ID, OTHER |
 
 **Índices**:
 - `idx_person_full_name` em `full_name` (para busca)
+- `idx_person_first_name` em `first_name` (para busca)
+- `idx_person_last_name` em `last_name` (para busca)
 - `idx_person_identification` em `(primary_identification_type, primary_identification_document)` (para unicidade + busca)
 
-**Coluna Computada**:
-```sql
-full_name = CONCAT_WS(' ', first_name, middle_name, last_name)
--- Implementado como @Formula no JPA
-```
+**Check Constraints**:
+- `chk_person_gender`: `gender IN ('MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY')`
+- `chk_person_identification_type`: `primary_identification_type IN ('CPF', 'SSN', 'PASSPORT', 'NATIONAL_ID', 'OTHER')`
+
+**Foreign Keys**:
+- `fk_person_party`: `id REFERENCES party(id)`
 
 ---
 
@@ -268,18 +281,24 @@ full_name = CONCAT_WS(' ', first_name, middle_name, last_name)
 
 | Coluna                          | Tipo         | Constraints                | Descrição                         |
 |---------------------------------|--------------|----------------------------|-----------------------------------|
-| id                              | UUID         | PRIMARY KEY, FOREIGN KEY   | Referencia party(id)              |
+| id                              | BIGINT       | PRIMARY KEY, FOREIGN KEY   | Referencia party(id)              |
 | legal_name                      | VARCHAR(255) | NOT NULL, INDEX            | Razão social oficial              |
 | trade_name                      | VARCHAR(255) | NULL, INDEX                | Nome fantasia                     |
 | brand_name                      | VARCHAR(255) | NULL                       | Nome de marca/marketing           |
-| founded_date                    | DATE         | NULL                       | Data de fundação da empresa       |
+| founding_date                   | DATE         | NULL                       | Data de fundação da empresa       |
 | primary_identification_document | VARCHAR(50)  | NULL, INDEX                | Documento de ID principal (CNPJ, EIN, etc.)|
-| primary_identification_type     | VARCHAR(20)  | NULL                       | CNPJ, EIN, VAT, etc.              |
+| primary_identification_type     | VARCHAR(20)  | NULL                       | CNPJ, EIN, VAT, COMPANY_NUMBER, OTHER |
 
 **Índices**:
-- `idx_org_legal_name` em `legal_name` (para busca)
-- `idx_org_trade_name` em `trade_name` (para busca)
-- `idx_org_identification` em `(primary_identification_type, primary_identification_document)` (para unicidade + busca)
+- `idx_organization_legal_name` em `legal_name` (para busca)
+- `idx_organization_trade_name` em `trade_name` (para busca)
+- `idx_organization_identification` em `(primary_identification_type, primary_identification_document)` (para unicidade + busca)
+
+**Check Constraints**:
+- `chk_organization_identification_type`: `primary_identification_type IN ('CNPJ', 'EIN', 'VAT', 'COMPANY_NUMBER', 'OTHER')`
+
+**Foreign Keys**:
+- `fk_organization_party`: `id REFERENCES party(id)`
 
 ---
 
@@ -1012,8 +1031,8 @@ logging:
 
 ### CA-01: Estrutura do Projeto
 - ✅ Projeto Maven multi-módulo com POM pai
-- ✅ Arquitetura limpa: camadas domain, application, infrastructure
-- ✅ Estrutura de pacotes: `com.study.party.{domain|application|infrastructure}`
+- ✅ Arquitetura em camadas com influências de DDD: domain, service, web
+- ✅ Estrutura de pacotes: `com.akstack.foundation.{config|domain|mapper|service|web}`
 
 ### CA-02: Modelo de Domínio
 - ✅ Entidades Party, Person, Organization com anotações JPA apropriadas

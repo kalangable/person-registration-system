@@ -2,7 +2,6 @@ package com.akstack.foundation;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 /**
  * Aplicação principal do Foundation Service.
@@ -23,7 +22,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * @since 1.0.0
  */
 @SpringBootApplication
-@EnableJpaAuditing
 public class FoundationApplication {
 
     /**

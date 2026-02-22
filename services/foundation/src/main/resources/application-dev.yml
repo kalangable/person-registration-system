@@ -5,9 +5,9 @@
 # Database Configuration (Development)
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/foundationdb
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/akstack_foundation
+    username: akstack
+    password: akstack123
   
   # JPA Configuration (Development)
   jpa:

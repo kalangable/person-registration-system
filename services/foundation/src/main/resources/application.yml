@@ -20,7 +20,6 @@ spring:
       ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-        implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
     show-sql: false
     open-in-view: false
     properties:
@@ -33,6 +32,12 @@ spring:
         order_inserts: true
         order_updates: true
         generate_statistics: false
+  
+  # JPA Auditing Configuration
+  data:
+    jpa:
+      repositories:
+        enabled: true
   
   # Liquibase Configuration
   liquibase:
