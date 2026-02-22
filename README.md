@@ -166,7 +166,7 @@ person-registration-system/
 │       │       │   └── [Services]  # Business logic
 │       │       ├── web/
 │       │       │   ├── controller/ # REST controllers
-│       │       │   ├── dto/        # Request/Response DTOs
+│       │       │   ├── dto/        # Request/Response DTOs (inc. ErrorResponse)
 │       │       │   └── exception/  # GlobalExceptionHandler
 │       │       └── FoundationApplication.java
 │       ├── src/main/resources/

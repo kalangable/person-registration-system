@@ -89,7 +89,7 @@ com.akstack.foundation/
 │   └── [Services]              # Business logic services (PersonService, etc.)
 ├── web/
 │   ├── controller/             # REST controllers (PersonController, etc.)
-│   ├── dto/                    # Request/Response DTOs
+│   ├── dto/                    # Request/Response DTOs (including ErrorResponse)
 │   └── exception/              # GlobalExceptionHandler
 └── FoundationApplication.java
 ```
@@ -207,8 +207,9 @@ public class PersonController {
 ### Error Handling
 
 - Use custom exceptions: `ResourceNotFoundException`, `InvalidIdentificationException`, `DuplicateIdentificationException`
-- Global exception handling via `@RestControllerAdvice` in `GlobalExceptionHandler`
-- Return `ErrorResponse` with status, message, and path
+- All business exceptions are in `service/exception/` package
+- Global exception handling via `@RestControllerAdvice` in `GlobalExceptionHandler` (web/exception/)
+- Return `ErrorResponse` DTO (web/dto/) with status, message, and path
 - Validation errors include field-level details
 
 ### Validation
