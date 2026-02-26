@@ -6,11 +6,13 @@ import com.akstack.foundation.service.exception.ResourceNotFoundException;
 import com.akstack.foundation.service.validation.IdentificationValidationService;
 import com.akstack.foundation.domain.model.Person;
 import com.akstack.foundation.domain.repository.PersonRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class PersonService {
@@ -18,14 +20,6 @@ public class PersonService {
     private final PersonRepository personRepository;
     private final PartyNumberService partyNumberService;
     private final IdentificationValidationService validationService;
-
-    public PersonService(PersonRepository personRepository,
-                        PartyNumberService partyNumberService,
-                        IdentificationValidationService validationService) {
-        this.personRepository = personRepository;
-        this.partyNumberService = partyNumberService;
-        this.validationService = validationService;
-    }
 
     public Person create(Person person) {
         // Validate identification if provided

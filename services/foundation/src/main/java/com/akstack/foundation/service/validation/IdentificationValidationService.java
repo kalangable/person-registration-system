@@ -1,20 +1,15 @@
 package com.akstack.foundation.service.validation;
 
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
+@AllArgsConstructor
 @Service
 public class IdentificationValidationService {
 
     private final List<IdentificationValidator> validators;
     private final DefaultIdentificationValidator defaultValidator;
-
-    public IdentificationValidationService(List<IdentificationValidator> validators,
-                                           DefaultIdentificationValidator defaultValidator) {
-        this.validators = validators;
-        this.defaultValidator = defaultValidator;
-    }
 
     public boolean validate(String identificationType, String identificationNumber) {
         IdentificationValidator validator = findValidator(identificationType);

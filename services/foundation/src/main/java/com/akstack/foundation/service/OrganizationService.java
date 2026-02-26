@@ -6,11 +6,13 @@ import com.akstack.foundation.service.exception.ResourceNotFoundException;
 import com.akstack.foundation.service.validation.IdentificationValidationService;
 import com.akstack.foundation.domain.model.Organization;
 import com.akstack.foundation.domain.repository.OrganizationRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class OrganizationService {
@@ -18,14 +20,6 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final PartyNumberService partyNumberService;
     private final IdentificationValidationService validationService;
-
-    public OrganizationService(OrganizationRepository organizationRepository,
-                              PartyNumberService partyNumberService,
-                              IdentificationValidationService validationService) {
-        this.organizationRepository = organizationRepository;
-        this.partyNumberService = partyNumberService;
-        this.validationService = validationService;
-    }
 
     public Organization create(Organization organization) {
         // Validate identification if provided
